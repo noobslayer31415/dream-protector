@@ -1,294 +1,597 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Virtual Guardian Angel</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heart Monitor Emergency</title>
   <style>
-    /* Global Styles */
-    body {
+    :root {
+      --primary: #00ff00;
+      --warning: #ff5555;
+      --background: #000;
+      --monitor-bg: #001400;
+    }
+    
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
-      background: linear-gradient(135deg, #f5e1ff, #d0e7f5);
-      color: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
     }
-    h1, h2 {
+    
+    body {
+      background-color: var(--background);
+      color: var(--primary);
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+    
+    .container {
+      max-width: 800px;
+      width: 100%;
       text-align: center;
     }
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 1rem;
-      border: none;
+    
+    .monitor-container {
+      width: 100%;
+      position: relative;
+      border: 3px solid var(--primary);
+      border-radius: 10px;
+      background-color: var(--monitor-bg);
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+      overflow: hidden;
+      margin: 20px 0;
+      aspect-ratio: 16/5;
+    }
+    
+    .grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: 50px 50px;
+      background-image:
+        linear-gradient(to right, rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+      z-index: 1;
+    }
+    
+    #ecgCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .status-container {
+      margin: 20px 0;
+      padding: 10px;
+      border: 2px solid var(--primary);
       border-radius: 5px;
+      background-color: rgba(0, 255, 0, 0.1);
+    }
+    
+    .status-text {
+      font-size: 1.2rem;
+      margin: 10px 0;
+      height: 1.5em;
+    }
+    
+    .bpm-display {
+      font-size: 1.5rem;
+      margin: 10px 0;
+    }
+    
+    .alert {
+      color: var(--warning);
+      font-weight: bold;
+      animation: blink 1s infinite;
+    }
+    
+    .shake {
+      animation: shake 0.5s linear infinite;
+    }
+    
+    .glitch {
+      animation: glitch 0.3s linear infinite;
+    }
+    
+    .big-message {
+      font-size: 2.5rem;
+      margin: 30px 0;
+      font-weight: bold;
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    
+    .revive-button {
+      padding: 20px 40px;
+      font-size: 1.5rem;
+      background-color: transparent;
+      color: var(--warning);
+      border: 3px solid var(--warning);
+      border-radius: 10px;
       cursor: pointer;
-      background-color: #7c9eff;
-      color: white;
-      transition: background-color 0.3s;
+      transition: all 0.3s;
+      margin: 20px auto;
+      display: block;
+      opacity: 0;
+      transform: scale(0.5);
+      animation: none;
+      font-family: 'Courier New', monospace;
+      position: relative;
+      overflow: hidden;
     }
-    button:hover {
-      background-color: #5a7dd6;
+    
+    .revive-button.active {
+      opacity: 1;
+      transform: scale(1);
+      animation: pulse 1.5s infinite;
     }
+    
+    .revive-button:hover {
+      background-color: rgba(255, 0, 0, 0.2);
+    }
+    
+    .revive-button:active {
+      transform: scale(0.95);
+    }
+    
+    .heart-float {
+      position: fixed;
+      font-size: 2rem;
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .typing-effect::after {
+      content: "|";
+      animation: blink 1s step-end infinite;
+    }
+    
     .hidden {
       display: none;
     }
-    /* Container Styles */
-    #selectionScreen, #sleepScreen {
-      width: 90%;
-      max-width: 600px;
-      text-align: center;
-      padding: 20px;
-      background-color: rgba(255, 255, 255, 0.9);
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-      position: relative;
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
-    #guardianButtons {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px 0;
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 85, 85, 0.7); }
+      50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 85, 85, 0.9); }
     }
-    .guardian-btn {
-      font-size: 2rem;
-      background: none;
-      border: 2px solid #7c9eff;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s, background-color 0.2s;
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
     }
-    .guardian-btn:hover {
-      transform: scale(1.1);
-      background-color: rgba(124, 158, 255, 0.2);
+    
+    @keyframes glitch {
+      0% { opacity: 1; transform: translateX(0); }
+      25% { opacity: 0.9; transform: translateX(2px); }
+      50% { opacity: 1; transform: translateX(0); }
+      75% { opacity: 0.9; transform: translateX(-2px); }
+      100% { opacity: 1; transform: translateX(0); }
     }
-    /* Display area for the selected guardian */
-    #selectedGuardianDisplay {
-      margin: 20px 0;
+    
+    @keyframes floatUp {
+      0% { transform: translateY(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-500px); opacity: 0; }
     }
-    #selectedGuardian {
-      font-size: 4rem;
-      display: inline-block;
-      padding: 20px;
-      border-radius: 50%;
-      background-color: #fff;
-    }
-    /* Sleep Scene Styling */
-    .bedroom {
-      position: relative;
-      padding: 20px;
-      background-color: #1e2a38;
-      border-radius: 10px;
-      color: #f0f8ff;
-      overflow: hidden;
-    }
-    .bedroom h2 {
-      margin-top: 0;
-      color: #f7d794;
-    }
-    #sleepingSimran {
-      margin: 20px auto;
-      font-size: 2rem;
-    }
-    .bed-icon {
-      font-size: 4rem;
-    }
-    #guardianInSleep {
-      margin: 20px auto;
-      font-size: 4rem;
-    }
-    #comfortMessage {
-      margin: 20px auto;
-      font-size: 1.2rem;
-      padding: 10px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 5px;
-      max-width: 80%;
-    }
-    /* Fade In/Out Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .fade-in {
-      animation: fadeIn 1s forwards;
-    }
-    @keyframes fadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-    .fade-out {
-      animation: fadeOut 0.5s forwards;
-    }
-    /* Breathing Animation */
-    @keyframes breathing {
-      0%   { transform: scale(1); }
-      50%  { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-    .breathing {
-      animation: breathing 3s ease-in-out infinite;
-    }
-    /* Glowing Effect */
-    @keyframes glow {
-      0%   { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
-      50%  { box-shadow: 0 0 20px rgba(255, 255, 255, 1); }
-      100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
-    }
-    .glow {
-      animation: glow 2s ease-in-out infinite;
-    }
-    /* Responsive Adjustments */
-    @media (max-width: 500px) {
-      #selectedGuardian {
-        font-size: 3rem;
+    
+    @media screen and (max-width: 768px) {
+      .status-text {
+        font-size: 1rem;
       }
-      .guardian-btn {
-        width: 50px;
-        height: 50px;
+      
+      .bpm-display {
+        font-size: 1.2rem;
+      }
+      
+      .big-message {
+        font-size: 1.8rem;
+      }
+      
+      .revive-button {
+        padding: 15px 30px;
+        font-size: 1.2rem;
+      }
+    }
+    
+    @media screen and (max-width: 480px) {
+      .monitor-container {
+        aspect-ratio: 3/2;
+      }
+      
+      .status-text {
+        font-size: 0.9rem;
+      }
+      
+      .big-message {
         font-size: 1.5rem;
+      }
+      
+      .revive-button {
+        padding: 12px 24px;
+        font-size: 1rem;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Guardian Selection Screen -->
-  <div id="selectionScreen">
-    <h1>Hi Simran, Choose Your Guardian Angel!</h1>
-    <div id="guardianButtons">
-      <button class="guardian-btn" data-guardian="panda">🐼</button>
-      <button class="guardian-btn" data-guardian="unicorn">🦄</button>
-      <button class="guardian-btn" data-guardian="dragon">🐉</button>
-      <button class="guardian-btn" data-guardian="owl">🦉</button>
-      <button class="guardian-btn" data-guardian="cat">🐱</button>
+  <div class="container">
+    <div class="monitor-container">
+      <div class="grid"></div>
+      <canvas id="ecgCanvas"></canvas>
     </div>
-    <div id="selectedGuardianDisplay">
-      <!-- Display the chosen guardian with subtle breathing and glow -->
-      <div id="selectedGuardian" class="breathing glow">🐼</div>
+    
+    <div class="status-container">
+      <div id="statusText1" class="status-text typing-effect"></div>
+      <div id="statusText2" class="status-text"></div>
+      <div id="bpmDisplay" class="bpm-display">BPM: 75</div>
     </div>
-    <button id="nextButton">Next</button>
+    
+    <div id="bigMessage" class="big-message"></div>
+    
+    <button id="reviveButton" class="revive-button">💔 PRESS TO REVIVE 💔</button>
   </div>
-
-  <!-- Sleep Scene Screen -->
-  <div id="sleepScreen" class="hidden">
-    <div class="bedroom">
-      <h2>Simu's Room</h2>
-      <div id="sleepingSimran" class="breathing">
-        <div class="bed-icon">🛌</div>
-        <p>Simran sleeping peacefully</p>
-      </div>
-      <div id="guardianInSleep" class="glow breathing">
-        <!-- The guardian will be shown here -->
-        <div id="guardianAngel">🐼</div>
-      </div>
-      <div id="comfortMessage"></div>
-    </div>
-    <button id="backButton">Back</button>
-  </div>
+  
+  <audio id="beepSound" src="https://cdnjs.cloudflare.com/ajax/libs/ion-sound/3.0.7/sounds/button_tiny.mp3" preload="auto"></audio>
+  <audio id="flatlineSound" src="https://cdnjs.cloudflare.com/ajax/libs/ion-sound/3.0.7/sounds/button_tick.mp3" preload="auto"></audio>
+  <audio id="alarmSound" src="https://cdnjs.cloudflare.com/ajax/libs/ion-sound/3.0.7/sounds/bell_ring.mp3" preload="auto"></audio>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function(){
-      const guardianBtns = document.querySelectorAll(".guardian-btn");
-      const selectedGuardianEl = document.getElementById("selectedGuardian");
-      const guardianInSleepEl = document.getElementById("guardianAngel");
-      const nextButton = document.getElementById("nextButton");
-      const backButton = document.getElementById("backButton");
-      const selectionScreen = document.getElementById("selectionScreen");
-      const sleepScreen = document.getElementById("sleepScreen");
-      const comfortMessageEl = document.getElementById("comfortMessage");
 
-      // Comforting messages for the sleep scene.
-      const messages = [
-        "सिमू, आरामले सुत! म यहाँ छु, तिम्रो सपनाको बॉडीगार्ड भएर 💪 डरलाग्दो सपना आए, सीधा लात हानिदिन्छु",
-        "ए सपना, होसियार! तिमीले सिमुलाई हानि पुर्‍याउन सक्दैनौ! 😤",
-        "यदि तिमीलाई डर लाग्दो सपना आयो भने, चिन्ता नगर! म तिमीलाई Cheat Code पठाइदिन्छु! 🎮"
-      ];
-
-      // Retrieve the previously chosen guardian from localStorage or default to "panda".
-      function loadGuardian(){
-        return localStorage.getItem("selectedGuardian") || "panda";
-      }
-
-      // Update the guardian display based on the guardian key.
-      function updateSelectedGuardian(guardian) {
-        let emoji;
-        switch(guardian) {
-          case "panda":   emoji = "🐼"; break;
-          case "unicorn": emoji = "🦄"; break;
-          case "dragon":  emoji = "🐉"; break;
-          case "owl":     emoji = "🦉"; break;
-          case "cat":     emoji = "🐱"; break;
-          default:        emoji = "🐼";
-        }
-        selectedGuardianEl.textContent = emoji;
-      }
-
-      // Set the current guardian from localStorage (or default) on load.
-      let currentGuardian = loadGuardian();
-      updateSelectedGuardian(currentGuardian);
-
-      // Add event listeners for guardian selection buttons.
-      guardianBtns.forEach(btn => {
-        btn.addEventListener("click", function(){
-          currentGuardian = this.getAttribute("data-guardian");
-          localStorage.setItem("selectedGuardian", currentGuardian);
-          updateSelectedGuardian(currentGuardian);
+        // Tracking when the page is viewed
+    function logPageView() {
+      const timestamp = new Date().toISOString();
+      const analyticsData = {
+        event: 'page_viewed',
+        timestamp: timestamp,
+        userAgent: navigator.userAgent,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`
+      };
+      
+    //   // Option 1: Using Google Analytics (if added to your GitHub page)
+    //   if (typeof gtag !== 'undefined') {
+    //     gtag('event', 'page_view', analyticsData);
+    //   }
+      
+      // Option 2: Sending to a webhook service
+      const webhookUrl = 'https://eo6lw5shzcooas7.m.pipedream.net'; // Replace with a service like RequestBin, IFTTT, etc.
+      try {
+        fetch(webhookUrl, {
+          method: 'POST',
+          body: JSON.stringify(analyticsData),
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
-      });
+      } catch (e) {
+        console.log('Analytics logging failed');
+      }
+      
+      // Option 3: Store in localStorage (you'll need to check this manually)
+      localStorage.setItem('page_viewed', timestamp);
+    }
+    
 
-      // Next button transitions to the sleep scene.
-      nextButton.addEventListener("click", function(){
-        // Update guardian in sleep scene.
-        let emoji;
-        switch(currentGuardian) {
-          case "panda":   emoji = "🐼"; break;
-          case "unicorn": emoji = "🦄"; break;
-          case "dragon":  emoji = "🐉"; break;
-          case "owl":     emoji = "🦉"; break;
-          case "cat":     emoji = "🐱"; break;
-          default:        emoji = "🐼";
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set up canvas
+      const canvas = document.getElementById('ecgCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+       logPageView();
+      // Elements
+      const statusText1 = document.getElementById('statusText1');
+      const statusText2 = document.getElementById('statusText2');
+      const bpmDisplay = document.getElementById('bpmDisplay');
+      const bigMessage = document.getElementById('bigMessage');
+      const reviveButton = document.getElementById('reviveButton');
+      const beepSound = document.getElementById('beepSound');
+      const flatlineSound = document.getElementById('flatlineSound');
+      const alarmSound = document.getElementById('alarmSound');
+      
+      // Variables
+      let heartbeatPattern = [];
+      let position = 0;
+      let currentState = 'normal'; // normal, flatline, restored
+      let animationId;
+      let bpm = 75;
+      let beepInterval;
+      let glitchTimeout;
+      let sequence = 0;
+      
+      // Resize handler
+      window.addEventListener('resize', function() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+      });
+      
+      // Generate normal heartbeat pattern
+      function generateHeartbeatPattern() {
+        const patternLength = 200;
+        heartbeatPattern = [];
+        
+        for (let i = 0; i < patternLength; i++) {
+          let y = 0;
+          
+          // P wave, QRS complex, T wave
+          if (i > 10 && i < 20) {
+            y = 10 * Math.sin(Math.PI * (i - 10) / 10);
+          } else if (i > 25 && i < 30) {
+            y = -20 * (i - 25) / 5;
+          } else if (i > 30 && i < 35) {
+            y = -20 + 70 * (i - 30) / 5;
+          } else if (i > 35 && i < 40) {
+            y = 50 - 70 * (i - 35) / 5;
+          } else if (i > 40 && i < 45) {
+            y = -20 + 20 * (i - 40) / 5;
+          } else if (i > 60 && i < 80) {
+            y = 15 * Math.sin(Math.PI * (i - 60) / 20);
+          }
+          
+          heartbeatPattern.push(y);
         }
-        guardianInSleepEl.textContent = emoji;
-
-        // Randomly choose a comforting message.
-        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-        comfortMessageEl.textContent = randomMessage;
-
-        // Fade out selection screen and fade in sleep scene.
-        selectionScreen.classList.add("fade-out");
-        setTimeout(function(){
-          selectionScreen.classList.add("hidden");
-          sleepScreen.classList.remove("hidden");
-          sleepScreen.classList.add("fade-in");
-          // Clean up fade classes after the animation.
-          setTimeout(function(){
-            selectionScreen.classList.remove("fade-out");
-            sleepScreen.classList.remove("fade-in");
-          }, 1000);
+      }
+      
+      // Draw ECG line
+      function drawECG() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        
+        const centerY = canvas.height / 2;
+        let x = 0;
+        
+        if (currentState === 'normal' || currentState === 'restored') {
+          // Draw heartbeat
+          for (let i = 0; i < canvas.width; i++) {
+            const patternPos = (i + position) % heartbeatPattern.length;
+            const y = centerY - heartbeatPattern[patternPos];
+            
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+            
+            x++;
+          }
+          
+          // Move pattern
+          position = (position + 2) % heartbeatPattern.length;
+        } else if (currentState === 'flatline') {
+          // Draw flatline
+          ctx.moveTo(0, centerY);
+          ctx.lineTo(canvas.width, centerY);
+        }
+        
+        ctx.strokeStyle = currentState === 'flatline' ? '#ff5555' : '#00ff00';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        animationId = requestAnimationFrame(drawECG);
+      }
+      
+      // Type text with effect
+      function typeText(element, text, callback, delay = 50) {
+        let index = 0;
+        element.textContent = '';
+        element.classList.add('typing-effect');
+        
+        function type() {
+          if (index < text.length) {
+            element.textContent = text.substring(0, index + 1);
+            index++;
+            setTimeout(type, delay);
+          } else {
+            element.classList.remove('typing-effect');
+            if (callback) setTimeout(callback, 500);
+          }
+        }
+        
+        type();
+      }
+      
+      // Play beep for heartbeat
+      function f() {
+        if (beepInterval) clearInterval(beepInterval);
+        
+        beepInterval = setInterval(() => {
+          beepSound.currentTime = 0;
+        //   beepSound.play().catch(error => console.log('Audio play failed:', error));
+        }, 60000 / bpm);
+      }
+      
+      // Stop beep
+      function stopBeep() {
+        if (beepInterval) {
+          clearInterval(beepInterval);
+          beepInterval = null;
+        }
+      }
+      
+      // Create floating heart animation
+      function createFloatingHeart() {
+        const heart = document.createElement('div');
+        heart.classList.add('heart-float');
+        heart.innerHTML = `Thank you, Simran!`;
+        heart.style.left = `${50 + (Math.random() * 20 - 10)}%`;
+        heart.style.top = `${70 + (Math.random() * 10)}%`;
+        document.body.appendChild(heart);
+        
+        setTimeout(() => {
+          heart.style.animation = `floatUp 8s ease-out forwards`;
+        }, 10);
+        
+        setTimeout(() => {
+          document.body.removeChild(heart);
+        }, 8000);
+      }
+      
+      // Sequence functions
+      function startSequence() {
+        // Initialize
+        generateHeartbeatPattern();
+        currentState = 'normal';
+        drawECG();
+        // startBeep();
+        
+        // Begin the heart monitor sequence
+        sequence1();
+      }
+      
+      // Sequence 1: Normal heartbeat
+      function sequence1() {
+        typeText(statusText1, "Monitoring Pranav 's heartbeat...", () => {
+          typeText(statusText2, "Status: Normal 💚", () => {
+            setTimeout(sequence2, 1000);
+          });
+        });
+      }
+      
+      // Sequence 2: Flatline
+      function sequence2() {
+        // Flatline sound
+        // flatlineSound.play().catch(error => console.log('Audio play failed:', error));
+        // stopBeep();
+        
+        // Change to flatline
+        currentState = 'flatline';
+        
+        // Alert sound after a short delay
+        setTimeout(() => {
+        //   alarmSound.play().catch(error => console.log('Audio play failed:', error));
         }, 500);
-      });
+        
+        // Update display
+        statusText1.textContent = "";
+        statusText2.textContent = "";
+        bpmDisplay.textContent = "BPM: --";
+        bpmDisplay.classList.add('alert');
+        
+        // Show alert text
+        typeText(statusText1, "ALERT! CRITICAL CONDITION DETECTED! 🚨", () => {
+          typeText(statusText2, "Cause: Simran is angry 😢", () => {
+            setTimeout(() => {
+              typeText(statusText1, "Initiating emergency recovery...", sequence3);
+            }, 1500);
+          });
+        }, 30);
+      }
+      
+      // Sequence 3: Glitching
+      function sequence3() {
+        // Add glitch effects
+        statusText1.classList.add('shake');
+        statusText2.classList.add('glitch');
+        document.querySelector('.status-container').classList.add('shake');
+        
+        // Glitching text
+        setTimeout(() => {
+          typeText(statusText1, "Searching for a cure...", () => {
+            typeText(statusText2, "Only one remedy found: Simran's forgiveness ❤️", sequence4);
+          });
+        }, 1500);
+      }
+      
+      // Sequence 4: Big message
+      function sequence4() {
+        // Remove glitch effects
+        statusText1.classList.remove('shake');
+        statusText2.classList.remove('glitch');
+        document.querySelector('.status-container').classList.remove('shake');
+        
+        // Show big message
+        bigMessage.style.transition = 'all 1s ease';
+        bigMessage.textContent = "Will you forgive me?";
+        bigMessage.style.opacity = '1';
+        bigMessage.style.transform = 'scale(1)';
+        
+        // Activate button
+        setTimeout(() => {
+          reviveButton.classList.add('active');
+          reviveButton.addEventListener('click', sequence5);
+        }, 1000);
+      }
+      
+      // Sequence 5: Revival
+      function sequence5() {
+        // Reset heart monitor
+        currentState = 'restored';
+        generateHeartbeatPattern();
+        
+        // Reset display
+        bpmDisplay.classList.remove('alert');
+        
+        // Update messages
+        bigMessage.style.opacity = '0';
+        bigMessage.style.transform = 'scale(0.5)';
+        reviveButton.classList.remove('active');
+        reviveButton.disabled = true;
 
-      // Back button transitions back to the selection screen.
-      backButton.addEventListener("click", function(){
-        sleepScreen.classList.add("fade-out");
-        setTimeout(function(){
-          sleepScreen.classList.add("hidden");
-          selectionScreen.classList.remove("hidden");
-          selectionScreen.classList.add("fade-in");
-          setTimeout(function(){
-            sleepScreen.classList.remove("fade-out");
-            selectionScreen.classList.remove("fade-in");
-          }, 1000);
-        }, 500);
-      });
+
+
+        // Log forgiveness in localStorage
+        const webhookUrl = 'https://eo6lw5shzcooas7.m.pipedream.net';
+        try {
+        const timestamp = new Date().toISOString();
+        const forgivenData = {
+          event: 'forgiven',
+          timestamp: timestamp
+        };
+          fetch(webhookUrl, {
+            method: 'POST',
+            body: JSON.stringify(forgivenData),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+        } catch (e) {
+          console.log('Analytics logging failed');
+        }
+        
+        // Restart heartbeat sound
+        bpm = 85; // Slightly elevated after recovery
+        bpmDisplay.textContent = `BPM: ${bpm}`;
+        // startBeep();
+        
+        // Success messages
+        typeText(statusText1, "Heartbeat restored! 🫀", () => {
+          typeText(statusText2, "System rebooted with happiness.exe 😊", () => {
+            setTimeout(() => {
+              typeText(statusText1, "Message from my heart: I'm sorry, Simran!", sequence6);
+            }, 1500);
+          });
+        });
+      }
+      
+      // Sequence 6: Floating hearts
+      function sequence6() {
+        // Create multiple floating hearts
+        for (let i = 0; i < 5; i++) {
+          setTimeout(createFloatingHeart, i * 1000);
+        }
+        
+
+      }
+      
+      // Start the sequence
+      startSequence();
     });
   </script>
 </body>
